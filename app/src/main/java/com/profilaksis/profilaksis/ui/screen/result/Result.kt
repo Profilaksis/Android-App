@@ -2,6 +2,7 @@ package com.profilaksis.profilaksis.ui.screen.result
 
 import android.annotation.SuppressLint
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,11 +41,15 @@ fun ResultScreen(
     viewModel: ResultViewModel = viewModel(
         factory = ViewModelFactory(Injection.provideRepository())
     ),
+    backScreen: String,
     parameter: ResponseResult,
     onClick: () -> Unit = {},
+    back: (String) -> Unit = {},
 ) {
+    val backButton = {back(backScreen)}
+    BackHandler(onBack = backButton)
+
     val uiState by viewModel.uiState.collectAsState()
-    Log.e("ResultScreen", "ResultScreen: $uiState")
 
     Scaffold(
         topBar = {
@@ -75,7 +80,8 @@ fun ResultScreen(
                         date = formatDate(parameter.date!!),
                         userName = parameter.userName,
                         description = parameter.description,
-                        onclick = onClick
+                        onclick = onClick,
+                        back = { back(backScreen) }
                     )
                 }
                 Spacer(modifier = Modifier.padding(5.dp))
@@ -115,7 +121,7 @@ fun ResultScreen(
 
 @Composable
 fun Skeleton(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -181,6 +187,7 @@ fun ResultPreview() {
             date = Date(),
             userName = "test",
             description = "test"
-        )
+        ),
+        backScreen = "heart"
     )
 }
