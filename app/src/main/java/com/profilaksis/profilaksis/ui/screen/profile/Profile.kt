@@ -25,12 +25,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.profilaksis.profilaksis.data.local.SettingsData
+import com.profilaksis.profilaksis.data.model.UserLogin
 import com.profilaksis.profilaksis.di.Injection
 import com.profilaksis.profilaksis.ui.components.BarResult
 import com.profilaksis.profilaksis.ui.components.Greeting
 import com.profilaksis.profilaksis.ui.components.SettingsCard
 import com.profilaksis.profilaksis.ui.screen.ViewModelFactory
-import com.profilaksis.profilaksis.utils.formatDate
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,13 +39,14 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel(
         factory = ViewModelFactory(Injection.provideRepository())
     ),
-    onCLick: () -> Unit
+    userData: UserLogin,
+    onCLick: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val greeting = com.profilaksis.profilaksis.utils.Greeting.getGreeting()
 
     LaunchedEffect(Unit) {
-        viewModel.loadData()
+        viewModel.loadData(userData.token)
     }
 
     Scaffold(
@@ -64,6 +65,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxSize(),
                 onCLick = onCLick,
                 greeting = greeting,
+                userData = userData,
                 uiState = uiState
             )
         }
@@ -75,6 +77,7 @@ fun ProfileContent(
     modifier: Modifier,
     onCLick: () -> Unit,
     greeting: String,
+    userData: UserLogin,
     uiState: ProfileUiState
 ) {
     val settings = SettingsData.settings
@@ -94,19 +97,19 @@ fun ProfileContent(
                 val profile = uiState.profile
                 if (profile != null) {
                     Greeting(
-                        name = profile.username,
-                        url = profile.avatar,
+                        name = userData.username,
+                        url = userData.avatar,
                         greeting = greeting,
                         icon = false,
                         modifier = Modifier.height(50.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
-                if (lasHistory != null) {
+                if (lasHistory?.id != null) {
                     BarResult(
-                        title = formatDate(lasHistory.createdAt),
-                        type = lasHistory.type,
-                        percent = lasHistory.predictionResult,
+                        title = "formatDate(lasHistory.createdAt),",
+                        type = lasHistory.kategoriPenyakit.toString(),
+                        percent = lasHistory.predictionResult!!,
                         onClick = { Unit }
                     )
                 }
@@ -114,7 +117,6 @@ fun ProfileContent(
 
             is ProfileUiState.Error -> {
                 val errorMessage = uiState.errorMessage
-                // Show error message
                 Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
             }
         }
@@ -145,6 +147,7 @@ fun ProfileContent(
 @Composable
 fun ProfileScreenPreview() {
     ProfileScreen(
+        userData = UserLogin(1, "username", "email", "role", "avatar", "token") ,
         onCLick = { /*TODO*/ }
     )
 }

@@ -1,5 +1,6 @@
 package com.profilaksis.profilaksis.container
 
+import android.content.Context
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.RenderEffect
@@ -25,17 +26,11 @@ import androidx.compose.material.FloatingActionButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.paint
@@ -44,8 +39,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -97,7 +94,9 @@ fun ProfilaksisApp(
     clickFab: (String) -> Unit = { },
     navController: NavHostController = rememberNavController(),
     userData: UserLogin,
-    onClick: () -> Unit = { }
+    onClick: () -> Unit = { },
+    context: Context,
+    token: UserLogin?,
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -111,15 +110,16 @@ fun ProfilaksisApp(
             modifier = Modifier.padding(bottom = 10.dp)
         ) {
             composable(Screen.Home.route) {
-                HomeScreen(userData = userData)
+                HomeScreen(userData = userData, context = context)
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(
+                    userData = userData,
                     onCLick = onClick
                 )
             }
             composable(Screen.History.route) {
-                HistoryScreen()
+                HistoryScreen(token = token, context = context)
             }
         }
 
@@ -132,7 +132,7 @@ fun ProfilaksisApp(
 @Composable
 fun BottomNavigation(
     clickFab: (String) -> Unit = { },
-    navController: NavHostController
+    navController: NavHostController,
 ) {
     val isMenuExtended = remember { mutableStateOf(false) }
 
@@ -177,7 +177,7 @@ fun ItemNavigation(
     renderEffect: androidx.compose.ui.graphics.RenderEffect?,
     fabAnimationProgress: Float = 0f,
     clickAnimationProgress: Float = 0f,
-    toggleAnimation: () -> Unit = { }
+    toggleAnimation: () -> Unit = { },
 ) {
     Box(
         contentAlignment = Alignment.BottomCenter
@@ -224,13 +224,15 @@ fun Circle(color: Color, animationProgress: Float) {
 fun CustomBottomNavigation(navController: NavHostController) {
     val navigationItem = listOf(
         NavigationItem(
-            icon = Icons.Filled.Menu,
+            iconIdle = painterResource(R.drawable.history_idle),
+            iconActive = painterResource(R.drawable.history_active),
             title = "History",
             contentDescription = "History",
             screen = Screen.History
         ),
         NavigationItem(
-            icon = Icons.Filled.AccountCircle,
+            iconIdle = painterResource(R.drawable.profile_idle),
+            iconActive = painterResource(R.drawable.profile_active),
             title = "Profile",
             contentDescription = "Profile",
             screen = Screen.Profile
@@ -259,14 +261,14 @@ fun CustomBottomNavigation(navController: NavHostController) {
             }) {
                 if (navController.currentDestination?.route == item.screen.route) {
                     Icon(
-                        imageVector = item.icon,
+                        painter = item.iconActive,
                         contentDescription = item.title,
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
                     )
                 } else {
                     Icon(
-                        imageVector = item.icon,
+                        painter = item.iconIdle,
                         contentDescription = item.title,
                         tint = Color.White.copy(alpha = 0.5f),
                         modifier = Modifier.size(30.dp)
@@ -295,7 +297,7 @@ fun FabGroup(
     ) {
 
         AnimatedFab(
-            icon = Icons.Default.Favorite,
+            icon = painterResource(R.drawable.heart),
             modifier = Modifier
                 .padding(
                     PaddingValues(
@@ -310,7 +312,7 @@ fun FabGroup(
         )
 
         AnimatedFab(
-            icon = Icons.Default.Face,
+            icon = painterResource(R.drawable.diabetes),
             modifier = Modifier.padding(
                 PaddingValues(
                     bottom = 72.dp,
@@ -330,7 +332,7 @@ fun FabGroup(
 
         if (navController != null && navController.currentDestination?.route != Screen.Home.route) {
             AnimatedFab(
-                icon = Icons.Default.Home,
+                icon = painterResource(R.drawable.home),
                 modifier = Modifier
                     .rotate(
                         225 * FastOutSlowInEasing
@@ -348,14 +350,24 @@ fun FabGroup(
                 backgroundColor = Color.Gray.copy(alpha = 0.5f),
             )
         } else {
+            var isIconOneVisible by remember { mutableStateOf(true) }
+
+            val currentIcon = if (isIconOneVisible) {
+                painterResource(R.drawable.scan)
+            } else {
+                painterResource(R.drawable.plus)
+            }
             AnimatedFab(
-                icon = Icons.Default.Add,
+                icon = currentIcon,
                 modifier = Modifier
                     .rotate(
                         225 * FastOutSlowInEasing
                             .transform(0.35f, 0.65f, animationProgress)
                     ),
-                onClick = toggleAnimation,
+                onClick = {
+                    isIconOneVisible = !isIconOneVisible
+                    toggleAnimation()
+                },
                 backgroundColor = Color.Gray.copy(alpha = 0.5f),
             )
         }
@@ -366,10 +378,10 @@ fun FabGroup(
 @Composable
 fun AnimatedFab(
     modifier: Modifier,
-    icon: ImageVector? = null,
+    icon: Painter? = null,
     opacity: Float = 1f,
     backgroundColor: Color = MaterialTheme.colors.secondary,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
 ) {
     FloatingActionButton(
         onClick = onClick,
@@ -379,7 +391,7 @@ fun AnimatedFab(
     ) {
         icon?.let {
             Icon(
-                imageVector = it,
+                painter = it,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = opacity)
             )
@@ -395,8 +407,18 @@ private fun MainScreenPreview() {
         ProfilaksisApp(
             clickFab = { },
             userData = UserLogin(
-                "test",
                 1,
+                "test",
+                "test",
+                "test",
+                "test",
+                "test",
+            ),
+            onClick = { },
+            context = LocalContext.current,
+            token = UserLogin(
+                1,
+                "test",
                 "test",
                 "test",
                 "test",

@@ -1,7 +1,6 @@
 package com.profilaksis.profilaksis
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.profilaksis.profilaksis.container.ProfilaksisApp
@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
 fun AppContainer() {
     var isBlank by remember { mutableStateOf(false) }
     var parameter: String by remember { mutableStateOf("") }
-    var dataUser: UserLogin? by remember { mutableStateOf(UserLogin("", 1, "", "", "", "")) }
+    var dataUser: UserLogin? by remember { mutableStateOf(UserLogin(0, "", "", "", "", "")) }
 
     val authViewModel: AuthViewModel = viewModel()
     dataUser = authViewModel.getLoggedInfo()
@@ -56,7 +56,8 @@ fun AppContainer() {
                 authViewModel.saveLoginInfo(it)
                 dataUser = authViewModel.getLoggedInfo()
                 isBlank = false
-            }
+            },
+            token = dataUser
         )
     } else {
         if (!isBlank) {
@@ -69,7 +70,9 @@ fun AppContainer() {
                 onClick = {
                     authViewModel.clearLoginInfo()
                     isBlank = true
-                }
+                },
+                context = LocalContext.current,
+                token = dataUser
             )
         } else {
             ScreenContainer(
@@ -78,7 +81,8 @@ fun AppContainer() {
                 },
                 userData = {
                     authViewModel.saveLoginInfo(it)
-                }
+                },
+                token = dataUser
             )
         }
     }
@@ -96,6 +100,16 @@ fun HomePreview() {
             ProfilaksisApp(
                 clickFab = {},
                 userData = UserLogin(
+                    username = "test",
+                    email = "",
+                    avatar = "",
+                    id = 1,
+                    role = "",
+                    token = ""
+                ),
+                context = LocalContext.current,
+                onClick = {},
+                token = UserLogin(
                     username = "test",
                     email = "",
                     avatar = "",

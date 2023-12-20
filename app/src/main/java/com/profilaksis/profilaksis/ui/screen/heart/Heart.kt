@@ -33,14 +33,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,16 +51,19 @@ import com.profilaksis.profilaksis.data.diabetesData
 import com.profilaksis.profilaksis.data.exerciseData
 import com.profilaksis.profilaksis.data.fruitData
 import com.profilaksis.profilaksis.data.genderData
-import com.profilaksis.profilaksis.data.model.ResponseResult
+import com.profilaksis.profilaksis.data.model.ResultData
+import com.profilaksis.profilaksis.data.model.UserLogin
 import com.profilaksis.profilaksis.data.radioButtonStatus
+import com.profilaksis.profilaksis.data.remote.requestdata.PredictRequestBody
 import com.profilaksis.profilaksis.data.smokingData
 import com.profilaksis.profilaksis.data.strokeData
 import com.profilaksis.profilaksis.data.vegetableData
 import com.profilaksis.profilaksis.data.walkData
 import com.profilaksis.profilaksis.di.Injection
 import com.profilaksis.profilaksis.ui.components.CustomRadioButton
-import com.profilaksis.profilaksis.ui.components.CustomTextField
 import com.profilaksis.profilaksis.ui.screen.ViewModelFactory
+import com.profilaksis.profilaksis.ui.screen.diabetes.AgeTextField
+import com.profilaksis.profilaksis.ui.screen.diabetes.IntTextField
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,14 +74,16 @@ fun HeartScreen(
     ),
     clickBack: () -> Unit,
     snackbarHostState: SnackbarHostState,
-    clickSubmit: (ResponseResult) -> Unit,
+    clickSubmit: (ResultData) -> Unit,
+    token: UserLogin,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isLoading = false
 
-    val name = remember { mutableStateOf("") }
     val ageStatus = remember { mutableStateOf("") }
-    val bmi = remember { mutableStateOf("") }
+    val height = remember { mutableIntStateOf(0) }
+    val weight = remember { mutableIntStateOf(0) }
+    val bmi = weight.intValue * ((height.intValue / 100) * (height.intValue / 100))
     val genderStatus = radioButtonStatus.genderStatus
     val diabetesStatus = radioButtonStatus.diabetesStatus
     val strokeStatus = radioButtonStatus.strokeStatus
@@ -143,18 +147,37 @@ fun HeartScreen(
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.padding(10.dp))
-                NameTextField(name, "Name", onValueChange = {
-                    name.value = it
-                    isLoading = false
-                })
-                Spacer(modifier = Modifier.padding(5.dp))
                 AgeTextField(
                     ageStatus,
                     "Age",
                     rightLabel = "year",
                     onValueChange = { ageStatus.value = it })
                 Spacer(modifier = Modifier.padding(5.dp))
-                BMITextField(bmi, "BMI", rightLabel = "mmHg", onValueChange = { bmi.value = it })
+                IntTextField(
+                    height,
+                    "Height",
+                    rightLabel = "Cm",
+                    onValueChange = {
+                        if (it == "") {
+                            height.intValue = 0
+                        } else {
+                            height.intValue = it.toInt()
+                        }
+                    })
+                Spacer(modifier = Modifier.padding(5.dp))
+                IntTextField(
+                    weight,
+                    "Weight",
+                    rightLabel = "Kg",
+                    onValueChange = {
+                        if (it == "") {
+                            weight.intValue = 0
+                        } else {
+                            weight.intValue = it.toInt()
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.padding(5.dp))
                 Spacer(modifier = Modifier.padding(5.dp))
                 ElevatedCard(
                     modifier = Modifier
@@ -322,9 +345,26 @@ fun HeartScreen(
                             .padding(10.dp)
                             .fillMaxWidth(0.7f),
                         onClick = {
-                            viewModel.sendData()
+                            viewModel.sendData(
+                                PredictRequestBody(
+                                    kelamin = genderStatus.ordinal,
+                                    umur = ageStatus.value.toInt(),
+                                    bmi = bmi,
+                                    tekananDarah = bloodPressureStatus.ordinal,
+                                    kolesterol = cholesterolStatus.ordinal,
+                                    stroke = strokeStatus.ordinal,
+                                    diabetes = diabetesStatus.ordinal,
+                                    sakitJantung = null,
+                                    rokok = smokingStatus.ordinal,
+                                    alkohol = alcoholStatus.ordinal,
+                                    olahraga = exerciseStatus.ordinal,
+                                    buah = fruitStatus.ordinal,
+                                    sayur = vegetableStatus.ordinal,
+                                    susahJalan = walkStatus.ordinal,
+                                ), token = token.token
+                            )
                         },
-                        enabled = name.value.isNotEmpty() && ageStatus.value.isNotEmpty() && bmi.value.isNotEmpty()
+                        enabled = ageStatus.value.isNotEmpty() && bmi != 0
                     ) {
                         Text(text = "Submit")
                     }
@@ -332,7 +372,7 @@ fun HeartScreen(
                 LaunchedEffect(uiState) {
                     when (val currentState = uiState) {
                         is HeartUiState.Loading -> {
-                            isLoading = true
+//                            isLoading = true
                         }
 
                         is HeartUiState.Success -> {
@@ -375,56 +415,12 @@ fun LoadingIndicator() {
     }
 }
 
-@Composable
-fun NameTextField(
-    name: MutableState<String>,
-    label: String,
-    onValueChange: (String) -> Unit,
-) {
-    CustomTextField(
-        name = name.value,
-        label = label,
-        onValueChange = onValueChange
-    )
-}
-
-@Composable
-fun AgeTextField(
-    age: MutableState<String>,
-    label: String,
-    rightLabel: String,
-    onValueChange: (String) -> Unit,
-) {
-    CustomTextField(
-        name = age.value,
-        label = label,
-        onValueChange = onValueChange,
-        keyboardType = KeyboardType.Number,
-        rightLabel = rightLabel
-    )
-}
-
-@Composable
-fun BMITextField(
-    bmi: MutableState<String>,
-    label: String,
-    rightLabel: String,
-    onValueChange: (String) -> Unit,
-) {
-    CustomTextField(
-        name = bmi.value,
-        label = label,
-        onValueChange = onValueChange,
-        keyboardType = KeyboardType.Number,
-        rightLabel = rightLabel
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
 fun HeartPreview() {
 
     HeartScreen(
-        clickBack = {}, snackbarHostState = SnackbarHostState(), clickSubmit = {}
+        clickBack = {}, snackbarHostState = SnackbarHostState(), clickSubmit = {},
+        token = UserLogin(1, "", "", "", "", "")
     )
 }

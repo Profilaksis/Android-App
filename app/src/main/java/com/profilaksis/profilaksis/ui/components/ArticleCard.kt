@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,18 +28,18 @@ fun ArticleCard(
     title: String,
     author: String,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
 ) {
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
-            .padding(5.dp)
+            .padding(10.dp)
     ) {
         Image(
             url,
             modifier = modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(130.dp)
                 .padding(3.dp)
         )
         Column(
